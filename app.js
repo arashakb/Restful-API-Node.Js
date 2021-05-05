@@ -31,12 +31,10 @@ const MAX_WINDOW_REQUEST_COUNT = 6;
 
 
 const rateLimiterByMe = (req, res, next) => {
-    // fetch records of current user using IP address, returns null when no record is found
     redisClient.get(req.ip, function(err, record) {
       if (err) return next(new AppError(err, 404));
       const currentRequestTime = moment();
       console.log(record);
-      //  if no record is found , create a new record for user and store to redis
       if (record == null) {
         let newRecord = [];
         let requestLog = {
@@ -47,7 +45,6 @@ const rateLimiterByMe = (req, res, next) => {
         redisClient.set(req.ip, JSON.stringify(newRecord));
         next();
       }
-      // if record is found, parse it's value and calculate number of requests users has made within the last window
       let data = JSON.parse(record);
       let windowStartTimestamp = moment()
         .subtract(WINDOW_SIZE_IN_HOURS, 'hours')
@@ -59,11 +56,9 @@ const rateLimiterByMe = (req, res, next) => {
       let totalWindowRequestsCount = requestsWithinWindow.reduce((accumulator, entry) => {
         return accumulator + entry.requestCount;
       }, 0);
-      // if number of requests made is greater than or equal to the desired maximum, return error
       if (totalWindowRequestsCount >= MAX_WINDOW_REQUEST_COUNT) {
         return next(new AppError('more than limit!', 404));
       } else {
-        // // if number of requests made is less than allowed maximum, log new entry
         let lastRequestLog = data[data.length - 1];
           lastRequestLog.requestCount++;
           data[data.length - 1] = lastRequestLog;
